@@ -1,0 +1,85 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres", "omitApi"]
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model User {
+  id             String  @id @default(uuid())
+  username       String  @unique
+  imageUrl       String
+  externalUserId String  @unique
+  bio            String?
+
+  following  Follow[] @relation(name: "Following")
+  followedBy Follow[] @relation(name: "FollowedBy")
+
+  blocking  Block[] @relation(name: "Blocking")
+  blockedBy Block[] @relation(name: "BlockedBy")
+
+  stream Stream?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Stream {
+  id           String  @id @default(uuid())
+  name         String
+  thumbnailUrl String?
+
+  ingressId String? @unique
+  serverUrl String?
+  streamKey String?
+
+  isLive              Boolean @default(false)
+  isChatEnabled       Boolean @default(true)
+  isChatDelayed       Boolean @default(false)
+  isChatFollowersOnly Boolean @default(false)
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([ingressId])
+}
+
+model Follow {
+  id          String @id @default(uuid())
+  followerId  String
+  followingId String
+
+  follower  User @relation(name: "Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation(name: "FollowedBy", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Block {
+  id        String @id @default(uuid())
+  blockerId String
+  blockedId String
+
+  blocker User @relation(name: "Blocking", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation(name: "BlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
